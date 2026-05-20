@@ -479,3 +479,17 @@ body {
 .empty-icon  { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
 .empty-text  { font-family: var(--mono); font-size: 13px; margin-bottom: 4px; }
 .empty-sub   { font-size: 11px; opacity: 0.6; }
+
+/* ========================================
+   Day Item ハイライト
+======================================== */
+.day-item {
+  transition: background 0.15s, border-left-width 0.15s;
+}
+.day-item:active {
+  background: #1a2535;
+}
+.day-item-active {
+  background: #131e2e !important;
+  border-left-width: 4px !important;
+}
