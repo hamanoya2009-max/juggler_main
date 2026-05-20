@@ -1,0 +1,328 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap');
+
+/* ========================================
+   CSS Variables
+======================================== */
+:root {
+  --bg:        #080810;
+  --surface:   #0e0e1a;
+  --surface2:  #13131f;
+  --border:    #1c1c2e;
+  --border2:   #252538;
+  --accent:    #00e5ff;
+  --accent2:   #ff2d6b;
+  --accent3:   #7fff00;
+  --text:      #b8cce0;
+  --text-dim:  #3d4f63;
+  --text-mute: #1e2d3d;
+  --mono:      'Share Tech Mono', monospace;
+  --sans:      'Zen Kaku Gothic New', sans-serif;
+  --radius:    6px;
+  --header-h:  56px;
+}
+
+/* ========================================
+   Reset & Base
+======================================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-tap-highlight-color: transparent; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ========================================
+   Background
+======================================== */
+.bg-grid {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.bg-scanlines {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px
+  );
+}
+
+/* ========================================
+   Header
+======================================== */
+.header {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  background: rgba(8,8,16,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  z-index: 100;
+}
+.header-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 100%; padding: 0 16px;
+}
+.logo {
+  font-family: var(--mono); font-size: 18px;
+  letter-spacing: 2px; display: flex; align-items: center; gap: 2px;
+}
+.logo-bracket { color: var(--text-dim); }
+.logo-text    { color: var(--text); }
+.logo-accent  {
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(0,229,255,0.6);
+}
+.header-meta {
+  display: flex; flex-direction: column;
+  align-items: flex-end; gap: 2px;
+}
+.header-hall {
+  font-family: var(--mono); font-size: 9px;
+  color: var(--text-dim); letter-spacing: 1px;
+}
+.header-status {
+  font-family: var(--mono); font-size: 9px;
+  color: var(--accent3); letter-spacing: 1px;
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+}
+
+/* ========================================
+   Back Button（model.html用）
+======================================== */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  text-decoration: none;
+  letter-spacing: 1px;
+  padding: 4px 0;
+  transition: color 0.15s;
+}
+.back-btn:hover { color: var(--accent); }
+
+/* ========================================
+   Main
+======================================== */
+.main {
+  position: relative; z-index: 1;
+  padding-top: calc(var(--header-h) + 20px);
+  padding-bottom: 40px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+/* ========================================
+   Page Title
+======================================== */
+.page-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding-left: 12px;
+  border-left: 2px solid var(--accent);
+}
+.page-title-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 3px;
+}
+.page-title-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* ========================================
+   Model Grid（index）
+======================================== */
+.model-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.model-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  cursor: pointer;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: cardIn 0.35s ease forwards;
+}
+.model-card:hover {
+  border-color: var(--model-color, var(--accent));
+  background: var(--surface2);
+  transform: translateY(-2px);
+}
+.model-card:active {
+  transform: translateY(0px);
+}
+.model-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--model-color, var(--accent));
+  box-shadow: 0 0 10px var(--model-color, var(--accent));
+}
+.model-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at top left,
+    rgba(255,255,255,0.03) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+@keyframes cardIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.model-card-short {
+  font-family: var(--mono);
+  font-size: 22px;
+  color: var(--model-color, var(--accent));
+  letter-spacing: 2px;
+  text-shadow: 0 0 12px var(--model-color, var(--accent));
+  line-height: 1;
+}
+.model-card-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+.model-card-count {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+/* ========================================
+   Machine List（model.html）
+======================================== */
+.machine-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.machine-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 14px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s, background 0.2s;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: cardIn 0.3s ease forwards;
+}
+.machine-row:hover {
+  border-color: var(--border2);
+  background: var(--surface2);
+}
+.machine-row::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--model-color, var(--accent));
+  box-shadow: 0 0 6px var(--model-color, var(--accent));
+}
+
+.row-no {
+  font-family: var(--mono);
+  font-size: 22px;
+  color: var(--model-color, var(--accent));
+  min-width: 44px;
+  text-align: center;
+  text-shadow: 0 0 8px var(--model-color, var(--accent));
+  line-height: 1;
+}
+.row-info {
+  flex: 1;
+  min-width: 0;
+}
+.row-model {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+.row-short {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--model-color, var(--accent));
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+.row-graph-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 7px 11px;
+  cursor: pointer;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.row-graph-btn:hover {
+  border-color: var(--model-color, var(--accent));
+  color: var(--model-color, var(--accent));
+  background: rgba(0,229,255,0.05);
+}
+
+/* ========================================
+   モデル別カラー
+======================================== */
+.model-gg3 { --model-color: #00e5ff; }
+.model-my5 { --model-color: #7fff00; }
+.model-neo { --model-color: #ff9500; }
+.model-mr  { --model-color: #ff2d6b; }
+.model-gss { --model-color: #bf5fff; }
+.model-umj { --model-color: #00ffcc; }
+.model-fk2 { --model-color: #ffcc00; }
+.model-hp8 { --model-color: #ff6b6b; }
