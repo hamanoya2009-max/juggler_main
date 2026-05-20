@@ -8,10 +8,13 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbwMliehrkydhGBzOqjfqKbV
 // ========================================
 // 状態
 // ========================================
-let machineNo  = null;
-let modelInfo  = null;
+let machineNo    = null;
+let modelInfo    = null;
 let currentYear  = null;
 let currentMonth = null;
+let selectedDay  = null; // 選択中の日付
+let graphData    = null; // 現在表示中のデータ
+let graphDates   = null; // 現在表示中の日付リスト
 
 // ========================================
 // 初期化
@@ -26,22 +29,18 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // 機種情報を取得
   modelInfo = MODELS.find(m => m.machines.includes(Number(machineNo))) || null;
 
-  // ヘッダー設定
   document.title = `台${machineNo} — JUGGLER MAIN`;
   document.getElementById('graphTitle').textContent =
     `No.${String(machineNo).padStart(2,'0')} ${modelInfo ? modelInfo.short : ''}`;
   document.getElementById('graphSub').textContent =
     modelInfo ? modelInfo.name : '不明';
 
-  // 戻るボタンのリンクを機種ページに
   if (modelInfo) {
     document.getElementById('backBtn').href = `${MODEL_BASE}?model=${modelInfo.key}`;
   }
 
-  // 今月をデフォルトに
   const now = new Date();
   currentYear  = now.getFullYear();
   currentMonth = now.getMonth() + 1;
@@ -58,12 +57,14 @@ function initMonthNav() {
   document.getElementById('monthPrev').addEventListener('click', () => {
     currentMonth--;
     if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+    selectedDay = null;
     updateMonthLabel();
     loadGraph();
   });
   document.getElementById('monthNext').addEventListener('click', () => {
     currentMonth++;
     if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+    selectedDay = null;
     updateMonthLabel();
     loadGraph();
   });
@@ -90,13 +91,24 @@ function setStatus(s) {
 }
 
 function showError(msg) {
-  const wrap = document.getElementById('graphWrap');
-  wrap.innerHTML = `
+  document.getElementById('graphWrap').innerHTML = `
     <div class="empty-state">
       <div class="empty-icon">✕</div>
       <div class="empty-text">${msg}</div>
     </div>
   `;
+}
+
+// ========================================
+// モデルカラー取得
+// ========================================
+function getModelColor() {
+  if (!modelInfo) return '#00e5ff';
+  return {
+    neo: '#ff9500', gg3: '#00e5ff', my5: '#7fff00',
+    mr:  '#ff2d6b', gss: '#bf5fff', umj: '#00ffcc',
+    fk2: '#ffcc00', hp8: '#ff6b6b'
+  }[modelInfo.key] || '#00e5ff';
 }
 
 // ========================================
@@ -132,7 +144,7 @@ async function loadGraph() {
 
     if (!json.success) throw new Error(json.error || 'データ取得失敗');
 
-    const data = json.data; // { "2026/05/01": [{g,diff}, ...], ... }
+    const data  = json.data;
     const dates = Object.keys(data).sort();
 
     if (dates.length === 0) {
@@ -147,7 +159,10 @@ async function loadGraph() {
       return;
     }
 
-    renderGraph(data, dates);
+    graphData  = data;
+    graphDates = dates;
+
+    renderGraph(data, dates, selectedDay);
     renderDaySummary(data, dates);
     setStatus('ready');
 
@@ -160,32 +175,32 @@ async function loadGraph() {
 // ========================================
 // グラフ描画
 // ========================================
-function renderGraph(data, dates) {
+function renderGraph(data, dates, highlightDate) {
   const wrap = document.getElementById('graphWrap');
+  const color = getModelColor();
 
-  // 連結データ生成（前日終値をオフセットとして累積）
+  // 連結データ生成
   const combined = [];
   const dayBoundaries = [];
   let xOffset = 0;
   let yOffset = 0;
 
   dates.forEach((date, di) => {
-    const points = data[date]; // [{g, diff}, ...]
-    dayBoundaries.push({ x: xOffset, date: date, yStart: yOffset });
+    const points = data[date];
+    dayBoundaries.push({ x: xOffset, date, yStart: yOffset, dayIndex: di });
 
     points.forEach(p => {
       combined.push({
         x: xOffset + p.g,
         y: yOffset + p.diff,
-        date: date,
+        date,
         dayIndex: di,
       });
     });
 
-    // 終値を取得してオフセット更新
-    const lastPoint = points[points.length - 1];
-    xOffset += lastPoint.g;
-    yOffset += lastPoint.diff;
+    const lastPt = points[points.length - 1];
+    xOffset += lastPt.g;
+    yOffset += lastPt.diff;
   });
 
   if (combined.length === 0) return;
@@ -197,48 +212,29 @@ function renderGraph(data, dates) {
   const plotH = H - MT - MB;
 
   const totalG = combined[combined.length - 1].x;
-  const minY = Math.min(...combined.map(p => p.y));
-  const maxY = Math.max(...combined.map(p => p.y));
+  const minY   = Math.min(...combined.map(p => p.y));
+  const maxY   = Math.max(...combined.map(p => p.y));
   const yRange = Math.max(maxY - minY, 100);
-  const yPad = yRange * 0.1;
+  const yPad   = yRange * 0.1;
 
   const toX = g => ML + (g / totalG) * plotW;
   const toY = v => MT + plotH - ((v - (minY - yPad)) / (yRange + yPad * 2)) * plotH;
   const zeroY = toY(0);
 
-  // Yグリッド目盛り
+  // Yグリッド
   const yStep = yRange > 5000 ? 1000 : yRange > 2000 ? 500 : yRange > 500 ? 200 : 100;
-  const yTickStart = Math.ceil((minY - yPad) / yStep) * yStep;
-  const yTickEnd   = Math.floor((maxY + yPad) / yStep) * yStep;
   const yTicks = [];
-  for (let v = yTickStart; v <= yTickEnd; v += yStep) yTicks.push(v);
+  for (let v = Math.ceil((minY - yPad) / yStep) * yStep; v <= Math.floor((maxY + yPad) / yStep) * yStep; v += yStep) {
+    yTicks.push(v);
+  }
 
-  // X軸ラベル（日付境界）
-  const modelColor = modelInfo
-    ? getComputedStyle(document.documentElement)
-        .getPropertyValue('--model-color') || '#00e5ff'
-    : '#00e5ff';
+  // 日別にポイントをグループ化
+  const dayGroups = {};
+  dates.forEach(d => { dayGroups[d] = []; });
+  combined.forEach(p => dayGroups[p.date].push(p));
 
-  // パス生成
-  const linePath = combined.map((p, i) =>
-    `${i === 0 ? 'M' : 'L'}${toX(p.x).toFixed(1)},${toY(p.y).toFixed(1)}`
-  ).join(' ');
-
-  // エリアパス
-  const areaPath = [
-    `M${toX(combined[0].x).toFixed(1)},${zeroY.toFixed(1)}`,
-    ...combined.map(p => `L${toX(p.x).toFixed(1)},${toY(p.y).toFixed(1)}`),
-    `L${toX(combined[combined.length-1].x).toFixed(1)},${zeroY.toFixed(1)}`,
-    'Z'
-  ].join(' ');
-
-  // 最大・最小点
-  const maxPt = combined.reduce((a,b) => a.y > b.y ? a : b);
-  const minPt = combined.reduce((a,b) => a.y < b.y ? a : b);
-  const lastPt = combined[combined.length - 1];
-
-  // グリッドHTML
-  let gridLines = yTicks.map(v => `
+  // グリッド線
+  const gridLines = yTicks.map(v => `
     <line x1="${ML}" y1="${toY(v).toFixed(1)}" x2="${W-MR}" y2="${toY(v).toFixed(1)}"
       stroke="${v === 0 ? '#1e4060' : '#111825'}"
       stroke-width="${v === 0 ? 1.5 : 0.5}"/>
@@ -249,65 +245,99 @@ function renderGraph(data, dates) {
     </text>
   `).join('');
 
-  // 日境界線・日付ラベル
-  let boundaryLines = dayBoundaries.map((b, i) => {
+  // 日境界線・X軸日付ラベル
+  const boundaryLines = dayBoundaries.map((b, i) => {
     const x = toX(b.x).toFixed(1);
-    const nextX = i < dayBoundaries.length - 1
-      ? toX(dayBoundaries[i+1].x)
-      : W - MR;
-    const midX = ((parseFloat(x) + nextX) / 2).toFixed(1);
-    const dayLabel = b.date.split('/')[2]; // DD部分のみ
+    const nextX = i < dayBoundaries.length - 1 ? toX(dayBoundaries[i+1].x) : W - MR;
+    const midX  = ((parseFloat(x) + nextX) / 2).toFixed(1);
+    const dayLabel = b.date.split('/')[2];
+    const isHighlight = highlightDate === b.date;
     return `
       ${i > 0 ? `<line x1="${x}" y1="${MT}" x2="${x}" y2="${H-MB}"
-        stroke="#1a2535" stroke-width="0.5" stroke-dasharray="2,3"/>` : ''}
+        stroke="${isHighlight ? color : '#1a2535'}"
+        stroke-width="${isHighlight ? 1 : 0.5}"
+        stroke-dasharray="2,3"/>` : ''}
       <text x="${midX}" y="${H-MB+14}"
-        text-anchor="middle" font-size="8" fill="#3d4f63">${dayLabel}</text>
+        text-anchor="middle" font-size="8"
+        fill="${isHighlight ? color : '#3d4f63'}"
+        font-weight="${isHighlight ? 'bold' : 'normal'}">${dayLabel}</text>
+    `;
+  }).join('');
+
+  // 日別折れ線（ハイライト対応）
+  const dayPaths = dates.map(date => {
+    const pts = dayGroups[date];
+    if (pts.length === 0) return '';
+
+    const isSelected   = highlightDate === date;
+    const hasSelection = highlightDate !== null;
+    const lineColor = isSelected ? color
+      : hasSelection ? '#2a3040'
+      : color;
+    const lineWidth = isSelected ? 2.5 : hasSelection ? 0.8 : 1.5;
+    const opacity   = isSelected ? 1 : hasSelection ? 0.3 : 1;
+
+    const path = pts.map((p, i) =>
+      `${i === 0 ? 'M' : 'L'}${toX(p.x).toFixed(1)},${toY(p.y).toFixed(1)}`
+    ).join(' ');
+
+    // エリア
+    const area = [
+      `M${toX(pts[0].x).toFixed(1)},${zeroY.toFixed(1)}`,
+      ...pts.map(p => `L${toX(p.x).toFixed(1)},${toY(p.y).toFixed(1)}`),
+      `L${toX(pts[pts.length-1].x).toFixed(1)},${zeroY.toFixed(1)}`,
+      'Z'
+    ].join(' ');
+
+    return `
+      <path d="${area}" fill="${lineColor}" fill-opacity="${isSelected ? 0.12 : hasSelection ? 0.02 : 0.07}"/>
+      <path d="${path}" fill="none" stroke="${lineColor}"
+        stroke-width="${lineWidth}" stroke-linejoin="round" opacity="${opacity}"/>
     `;
   }).join('');
 
   // 日境界の終値点
-  let endPoints = dayBoundaries.map((b, i) => {
+  const endPoints = dayBoundaries.map((b, i) => {
     if (i === 0) return '';
-    const cx = toX(b.x).toFixed(1);
-    const cy = toY(b.yStart).toFixed(1);
-    return `<circle cx="${cx}" cy="${cy}" r="2.5" fill="#ff2d6b" stroke="#000" stroke-width="0.5"/>`;
+    const isHighlight = highlightDate === b.date || highlightDate === dates[i-1];
+    return `<circle cx="${toX(b.x).toFixed(1)}" cy="${toY(b.yStart).toFixed(1)}"
+      r="${isHighlight ? 3.5 : 2.5}"
+      fill="${isHighlight ? color : '#ff2d6b'}"
+      stroke="#000" stroke-width="0.5" opacity="${highlightDate && !isHighlight ? 0.3 : 1}"/>`;
   }).join('');
 
-  const color = modelInfo ? {
-    neo: '#ff9500', gg3: '#00e5ff', my5: '#7fff00',
-    mr: '#ff2d6b', gss: '#bf5fff', umj: '#00ffcc',
-    fk2: '#ffcc00', hp8: '#ff6b6b'
-  }[modelInfo.key] || '#00e5ff' : '#00e5ff';
+  // 最大・最小点
+  const maxPt  = combined.reduce((a,b) => a.y > b.y ? a : b);
+  const minPt  = combined.reduce((a,b) => a.y < b.y ? a : b);
+  const lastPt = combined[combined.length - 1];
 
   wrap.innerHTML = `
     <div class="graph-scroll">
       <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block">
-
         ${gridLines}
-
         <line x1="${ML}" y1="${zeroY.toFixed(1)}" x2="${W-MR}" y2="${zeroY.toFixed(1)}"
           stroke="#1a3050" stroke-width="1"/>
-
         ${boundaryLines}
-
-        <path d="${areaPath}" fill="${color}" fill-opacity="0.07"/>
-        <path d="${linePath}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
-
+        ${dayPaths}
         ${endPoints}
 
         <!-- 最大値 -->
         <circle cx="${toX(maxPt.x).toFixed(1)}" cy="${toY(maxPt.y).toFixed(1)}"
-          r="3" fill="#ffd600"/>
+          r="3" fill="#ffd600"
+          opacity="${highlightDate && highlightDate !== maxPt.date ? 0.3 : 1}"/>
         <text x="${toX(maxPt.x).toFixed(1)}" y="${(toY(maxPt.y)-6).toFixed(1)}"
-          text-anchor="middle" font-size="8" fill="#ffd600">
+          text-anchor="middle" font-size="8" fill="#ffd600"
+          opacity="${highlightDate && highlightDate !== maxPt.date ? 0.3 : 1}">
           +${Math.round(maxPt.y)}
         </text>
 
         <!-- 最小値 -->
         <circle cx="${toX(minPt.x).toFixed(1)}" cy="${toY(minPt.y).toFixed(1)}"
-          r="3" fill="#ff2d6b"/>
+          r="3" fill="#ff2d6b"
+          opacity="${highlightDate && highlightDate !== minPt.date ? 0.3 : 1}"/>
         <text x="${toX(minPt.x).toFixed(1)}" y="${(toY(minPt.y)+14).toFixed(1)}"
-          text-anchor="middle" font-size="8" fill="#ff2d6b">
+          text-anchor="middle" font-size="8" fill="#ff2d6b"
+          opacity="${highlightDate && highlightDate !== minPt.date ? 0.3 : 1}">
           ${Math.round(minPt.y)}
         </text>
 
@@ -318,7 +348,6 @@ function renderGraph(data, dates) {
         <!-- 枠線 -->
         <rect x="${ML}" y="${MT}" width="${plotW}" height="${plotH}"
           fill="none" stroke="#1c1c2e" stroke-width="0.5"/>
-
       </svg>
     </div>
   `;
@@ -328,17 +357,12 @@ function renderGraph(data, dates) {
 // 日別サマリー描画
 // ========================================
 function renderDaySummary(data, dates) {
-  const summary = document.getElementById('daySummary');
-  const grid = document.getElementById('dayGrid');
-  const totalEl = document.getElementById('monthlyTotal');
+  const summary  = document.getElementById('daySummary');
+  const grid     = document.getElementById('dayGrid');
+  const totalEl  = document.getElementById('monthlyTotal');
   summary.style.display = 'block';
 
-  const color = modelInfo ? {
-    neo: '#ff9500', gg3: '#00e5ff', my5: '#7fff00',
-    mr: '#ff2d6b', gss: '#bf5fff', umj: '#00ffcc',
-    fk2: '#ffcc00', hp8: '#ff6b6b'
-  }[modelInfo.key] || '#00e5ff' : '#00e5ff';
-
+  const color = getModelColor();
   let cumulative = 0;
   let totalG = 0;
   grid.innerHTML = '';
@@ -346,20 +370,19 @@ function renderDaySummary(data, dates) {
   dates.forEach(date => {
     const points = data[date];
     const lastPt = points[points.length - 1];
-    const maxDiff = Math.max(...points.map(p => p.diff));
-    const minDiff = Math.min(...points.map(p => p.diff));
     const endVal = lastPt.diff;
-    const games = lastPt.g;
+    const games  = lastPt.g;
     cumulative += endVal;
-    totalG += games;
+    totalG     += games;
 
-    const dayLabel = date.split('/')[2];
     const endColor = endVal >= 0 ? '#7fff00' : '#ff2d6b';
     const cumColor = cumulative >= 0 ? '#00aa55' : '#aa2244';
 
     const item = document.createElement('div');
     item.className = 'day-item';
+    item.dataset.date = date;
     item.style.borderLeftColor = color;
+    item.style.cursor = 'pointer';
     item.innerHTML = `
       <div class="day-item-date" style="color:${color}">${date.slice(5)}</div>
       <div class="day-item-games">${games.toLocaleString()}G</div>
@@ -370,6 +393,24 @@ function renderDaySummary(data, dates) {
         累: ${cumulative >= 0 ? '+' : ''}${Math.round(cumulative)}
       </div>
     `;
+
+    // タップでハイライト
+    item.addEventListener('click', () => {
+      if (selectedDay === date) {
+        // 同じ日をタップ → 解除
+        selectedDay = null;
+        item.classList.remove('day-item-active');
+      } else {
+        // 別の日をタップ → 切り替え
+        selectedDay = date;
+        document.querySelectorAll('.day-item').forEach(el => {
+          el.classList.remove('day-item-active');
+        });
+        item.classList.add('day-item-active');
+      }
+      renderGraph(graphData, graphDates, selectedDay);
+    });
+
     grid.appendChild(item);
   });
 
