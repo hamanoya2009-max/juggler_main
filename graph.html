@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JUGGLER">
+  <title>JUGGLER MAIN — GRAPH</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="bg-scanlines"></div>
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-bracket">[</span>
+        <span class="logo-text">JUGGLER</span>
+        <span class="logo-accent">MAIN</span>
+        <span class="logo-bracket">]</span>
+      </div>
+      <div class="header-meta">
+        <span class="header-hall">CHALLENGER B-KAN</span>
+        <span class="header-status" id="statusDot">● LOADING</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <div class="page-title">
+      <a class="back-btn" id="backBtn" href="index.html">‹ BACK</a>
+      <span class="page-title-label" id="graphTitle">—</span>
+      <span class="page-title-sub" id="graphSub">—</span>
+    </div>
+
+    <!-- 月選択 -->
+    <div class="month-selector">
+      <button class="month-nav" id="monthPrev">‹</button>
+      <span class="month-label" id="monthLabel">—</span>
+      <button class="month-nav" id="monthNext">›</button>
+    </div>
+
+    <!-- グラフエリア -->
+    <div class="graph-wrap" id="graphWrap">
+      <div class="loading-state" id="loadingState">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">LOADING...</div>
+      </div>
+    </div>
+
+    <!-- 日別サマリー -->
+    <div class="day-summary" id="daySummary" style="display:none">
+      <div class="section-label-bar">DAY SUMMARY</div>
+      <div class="day-grid" id="dayGrid"></div>
+      <div class="monthly-total" id="monthlyTotal"></div>
+    </div>
+
+  </main>
+
+  <script src="master.js"></script>
+  <script src="graph.js"></script>
+</body>
+</html>
