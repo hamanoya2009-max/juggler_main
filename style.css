@@ -13,7 +13,7 @@
   --accent2:   #ff2d6b;
   --accent3:   #7fff00;
   --text:      #b8cce0;
-  --text-dim:  #7a9ab8;
+  --text-dim:  #a0bcd4;
   --text-mute: #4a6680;
   --mono:      'Share Tech Mono', monospace;
   --sans:      'Zen Kaku Gothic New', sans-serif;
@@ -119,11 +119,29 @@ body {
 .main {
   position: relative; z-index: 1;
   padding-top: calc(var(--header-h) + 20px);
-  padding-bottom: 40px;
+  padding-bottom: 0;
   max-width: 480px;
   margin: 0 auto;
-  padding-left: 16px;
-  padding-right: 16px;
+  padding-left: 0;
+  padding-right: 0;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--header-h));
+  overflow: hidden;
+}
+
+/* グラフ固定エリア */
+.graph-fixed {
+  flex-shrink: 0;
+  padding: 0 16px;
+}
+
+/* DAY SUMMARY スクロールエリア */
+.graph-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 16px 40px;
 }
 
 /* ========================================
@@ -517,19 +535,22 @@ body {
 ======================================== */
 .day-item-stat {
   font-family: var(--mono);
-  font-size: 9px;
-  margin-top: 3px;
+  font-size: 8px;
+  margin-top: 2px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   line-height: 1.2;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 .day-item-stat-label {
-  font-size: 8px;
-  opacity: 0.85;
+  font-size: 7px;
+  opacity: 0.9;
   white-space: nowrap;
 }
 .day-item-stat-icon {
-  font-size: 9px;
+  font-size: 8px;
   line-height: 1;
+  flex-shrink: 0;
 }
