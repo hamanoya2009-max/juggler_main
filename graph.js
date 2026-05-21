@@ -628,11 +628,11 @@ function renderDaySummary(data, dates) {
         <div class="day-item-right">
           <div class="day-item-seg-block">
             <div class="day-item-seg-label">BIG</div>
-            <div class="day-item-seg-val" style="color:${color}" data-ghost="88">${String(bigCount).padStart(2,'0')}</div>
+            <div class="day-item-seg-val" style="color:#00e676" data-ghost="88">${String(bigCount).padStart(2,'0')}</div>
           </div>
           <div class="day-item-seg-block">
             <div class="day-item-seg-label">REG</div>
-            <div class="day-item-seg-val" style="color:${color}" data-ghost="88">${String(regCount).padStart(2,'0')}</div>
+            <div class="day-item-seg-val" style="color:#00e676" data-ghost="88">${String(regCount).padStart(2,'0')}</div>
           </div>
         </div>
       </div>
