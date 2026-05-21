@@ -221,8 +221,13 @@ function getConfidenceColor(totalGames) {
 // ========================================
 // ブドウ確率逆算（GG3専用）
 // ========================================
+function normalizeDate(date) {
+  // ハイフン・スラッシュどちらでもスラッシュに統一
+  return date.replace(/-/g, '/');
+}
+
 function calcGrapeProb(date, graphPoints) {
-  const raw = rawDataMap ? rawDataMap[date] : null;
+  const raw = rawDataMap ? rawDataMap[normalizeDate(date)] : null;
   if (!raw) return null;
 
   const { big, reg, totalGames } = raw;
@@ -257,7 +262,7 @@ function calcGrapeProb(date, graphPoints) {
 // ボーナス合算確率を算出（GG3専用）
 // ========================================
 function calcBonusProb(date) {
-  const raw = rawDataMap ? rawDataMap[date] : null;
+  const raw = rawDataMap ? rawDataMap[normalizeDate(date)] : null;
   if (!raw) return null;
 
   const { big, reg, totalGames } = raw;
@@ -327,7 +332,7 @@ function estimateBonusSetting(bonusProb) {
 function buildStatsDisplay(date, graphPoints) {
   if (!modelInfo || modelInfo.key !== 'gg3') return null;
 
-  const raw = rawDataMap ? rawDataMap[date] : null;
+  const raw = rawDataMap ? rawDataMap[normalizeDate(date)] : null;
   if (!raw || !raw.totalGames || raw.totalGames < 1000) return null;
 
   const totalGames = raw.totalGames;
