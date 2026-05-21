@@ -539,7 +539,7 @@ body {
 }
 .day-item-seg-val {
   font-family: var(--seg);
-  font-size: 22px;
+  font-size: 16px;
   line-height: 1;
   letter-spacing: 2px;
   text-shadow: 0 0 8px currentColor;
