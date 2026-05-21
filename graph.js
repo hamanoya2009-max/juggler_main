@@ -574,7 +574,7 @@ function renderDaySummary(data, dates) {
     totalG     += games;
 
     const endColor = endVal >= 0 ? '#7fff00' : '#ff2d6b';
-    const cumColor = cumulative >= 0 ? '#00aa55' : '#aa2244';
+    const cumColor = cumulative >= 0 ? '#00cc66' : '#cc3355';
 
     // ブドウ・合算逆算（GG3のみ・1000G以上）
     const stats = buildStatsDisplay(date, points);
