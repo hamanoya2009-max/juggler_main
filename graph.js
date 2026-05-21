@@ -602,21 +602,40 @@ function renderDaySummary(data, dates) {
       }
     }
 
+    // BIG/REG取得（なければ0）
+    const rawDay = rawDataMap ? rawDataMap[normalizeDate(date)] : null;
+    const bigCount = rawDay ? rawDay.big : 0;
+    const regCount = rawDay ? rawDay.reg : 0;
+
     const item = document.createElement('div');
     item.className = 'day-item';
     item.dataset.date = date;
     item.style.borderLeftColor = color;
     item.style.cursor = 'pointer';
     item.innerHTML = `
-      <div class="day-item-date" style="color:${color}">${date.slice(5)}</div>
-      <div class="day-item-games">${games.toLocaleString()}G</div>
-      <div class="day-item-end" style="color:${endColor}">
-        ${endVal >= 0 ? '+' : ''}${endVal}
+      <div class="day-item-main">
+        <div class="day-item-left">
+          <div class="day-item-date" style="color:${color}">${date.slice(5)}</div>
+          <div class="day-item-games">${games.toLocaleString()}G</div>
+          <div class="day-item-end" style="color:${endColor}">
+            ${endVal >= 0 ? '+' : ''}${endVal}
+          </div>
+          <div class="day-item-cum" style="color:${cumColor}">
+            累: ${cumulative >= 0 ? '+' : ''}${Math.round(cumulative)}
+          </div>
+          ${statsHtml}
+        </div>
+        <div class="day-item-right">
+          <div class="day-item-seg-block">
+            <div class="day-item-seg-label">BIG</div>
+            <div class="day-item-seg-val" style="color:${color}" data-ghost="88">${String(bigCount).padStart(2,'0')}</div>
+          </div>
+          <div class="day-item-seg-block">
+            <div class="day-item-seg-label">REG</div>
+            <div class="day-item-seg-val" style="color:${color}" data-ghost="88">${String(regCount).padStart(2,'0')}</div>
+          </div>
+        </div>
       </div>
-      <div class="day-item-cum" style="color:${cumColor}">
-        累: ${cumulative >= 0 ? '+' : ''}${Math.round(cumulative)}
-      </div>
-      ${statsHtml}
     `;
 
     // タップでハイライト
