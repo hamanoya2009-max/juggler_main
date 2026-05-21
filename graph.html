@@ -31,32 +31,37 @@
 
   <main class="main">
 
-    <div class="page-title">
-      <a class="back-btn" id="backBtn" href="index.html">‹ BACK</a>
-      <span class="page-title-label" id="graphTitle">—</span>
-      <span class="page-title-sub" id="graphSub">—</span>
-    </div>
+    <!-- 固定エリア（グラフ・月選択・タイトル） -->
+    <div class="graph-fixed">
+      <div class="page-title">
+        <a class="back-btn" id="backBtn" href="index.html">‹ BACK</a>
+        <span class="page-title-label" id="graphTitle">—</span>
+        <span class="page-title-sub" id="graphSub">—</span>
+      </div>
 
-    <!-- 月選択 -->
-    <div class="month-selector">
-      <button class="month-nav" id="monthPrev">‹</button>
-      <span class="month-label" id="monthLabel">—</span>
-      <button class="month-nav" id="monthNext">›</button>
-    </div>
+      <!-- 月選択 -->
+      <div class="month-selector">
+        <button class="month-nav" id="monthPrev">‹</button>
+        <span class="month-label" id="monthLabel">—</span>
+        <button class="month-nav" id="monthNext">›</button>
+      </div>
 
-    <!-- グラフエリア -->
-    <div class="graph-wrap" id="graphWrap">
-      <div class="loading-state" id="loadingState">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">LOADING...</div>
+      <!-- グラフエリア -->
+      <div class="graph-wrap" id="graphWrap">
+        <div class="loading-state" id="loadingState">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">LOADING...</div>
+        </div>
       </div>
     </div>
 
-    <!-- 日別サマリー -->
-    <div class="day-summary" id="daySummary" style="display:none">
-      <div class="section-label-bar">DAY SUMMARY</div>
-      <div class="day-grid" id="dayGrid"></div>
-      <div class="monthly-total" id="monthlyTotal"></div>
+    <!-- スクロールエリア（DAY SUMMARY） -->
+    <div class="graph-scroll-area">
+      <div class="day-summary" id="daySummary" style="display:none">
+        <div class="section-label-bar">DAY SUMMARY</div>
+        <div class="day-grid" id="dayGrid"></div>
+        <div class="monthly-total" id="monthlyTotal"></div>
+      </div>
     </div>
 
   </main>
