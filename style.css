@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap');
+@import url('https://fonts.cdnfonts.com/css/dseg7-classic');
 
 /* ========================================
    CSS Variables
@@ -16,6 +17,7 @@
   --text-dim:  #a0bcd4;
   --text-mute: #4a6680;
   --mono:      'Share Tech Mono', monospace;
+  --seg:       'DSEG7 Classic', 'Share Tech Mono', monospace;
   --sans:      'Zen Kaku Gothic New', sans-serif;
   --radius:    6px;
   --header-h:  56px;
@@ -497,6 +499,61 @@ body {
 .empty-icon  { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
 .empty-text  { font-family: var(--mono); font-size: 13px; margin-bottom: 4px; }
 .empty-sub   { font-size: 11px; opacity: 0.6; }
+
+/* ========================================
+   Day Item レイアウト（左：テキスト / 右：7セグ）
+======================================== */
+.day-item-main {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.day-item-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.day-item-right {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border2);
+}
+.day-item-seg-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.day-item-seg-label {
+  font-family: var(--mono);
+  font-size: 7px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.day-item-seg-val {
+  font-family: var(--seg);
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: 2px;
+  text-shadow: 0 0 8px currentColor;
+  /* 消灯セグメント表現 */
+  position: relative;
+}
+.day-item-seg-val::before {
+  content: attr(data-ghost);
+  position: absolute;
+  inset: 0;
+  color: currentColor;
+  opacity: 0.1;
+  font-family: var(--seg);
+}
 
 /* ========================================
    Day Item ハイライト
