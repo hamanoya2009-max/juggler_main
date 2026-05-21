@@ -511,3 +511,25 @@ body {
   opacity: 0.85;
   white-space: nowrap;
 }
+
+/* ========================================
+   統計表示（ブドウ・ボーナス合算）
+======================================== */
+.day-item-stat {
+  font-family: var(--mono);
+  font-size: 9px;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.2;
+}
+.day-item-stat-label {
+  font-size: 8px;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.day-item-stat-icon {
+  font-size: 9px;
+  line-height: 1;
+}
