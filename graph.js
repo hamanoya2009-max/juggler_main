@@ -21,23 +21,34 @@ let rawDataMap   = null; // 日付 → { big, reg, totalGames }
 // ゴーゴージャグラー3 固定値
 // ========================================
 const GG3_CONSTANTS = {
-  BIG_PAYOUT:     240,    // BIG払い出し枚数
-  REG_PAYOUT:     96,     // REG払い出し枚数
-  REPLAY_PROB:    7.3,    // リプレイ確率（1/7.3）
-  CHERRY_PROB:    33,     // チェリー確率（1/33）
-  CHERRY_PAYOUT:  1,      // チェリー払い出し（適当打ち・平均1枚）
-  GRAPE_PAYOUT:   8,      // ブドウ払い出し枚数
-  BET:            3,      // 通常遊技投入枚数
+  BIG_PAYOUT:    240,  // BIG払い出し枚数
+  REG_PAYOUT:     96,  // REG払い出し枚数
+  REPLAY_PROB:   7.3,  // リプレイ確率（1/7.3）
+  CHERRY_PROB:    33,  // チェリー確率（1/33）
+  CHERRY_PAYOUT:   1,  // チェリー払い出し（適当打ち・平均1枚）
+  GRAPE_PAYOUT:    8,  // ブドウ払い出し枚数
+  BET:             3,  // 通常遊技投入枚数
 };
 
-// ブドウ確率の設定別閾値（設定間の中間値で区切る）
+// ブドウ確率の設定別閾値（分母・高いほど低設定）
 const GG3_GRAPE_SETTINGS = [
-  { setting: 1, prob: 7.76 },
-  { setting: 2, prob: 7.63 },
-  { setting: 3, prob: 7.52 },
-  { setting: 4, prob: 7.27 },
-  { setting: 5, prob: 6.86 },
-  { setting: 6, prob: 6.37 },
+  { setting: 1, prob: 6.25 },
+  { setting: 2, prob: 6.20 },
+  { setting: 3, prob: 6.15 },
+  { setting: 4, prob: 6.07 },
+  { setting: 5, prob: 6.00 },
+  { setting: 6, prob: 5.92 },
+];
+
+// ボーナス合算確率の設定別閾値（分母・高いほど低設定）
+// 設定5と6は公表値が同一（1/117.4）のため区別不可
+const GG3_BONUS_SETTINGS = [
+  { setting: '1', prob: 149.6 },
+  { setting: '2', prob: 145.3 },
+  { setting: '3', prob: 139.7 },
+  { setting: '4', prob: 130.5 },
+  { setting: '5', prob: 123.7 },
+  { setting: '6', prob: 117.4 },
 ];
 
 // ========================================
@@ -171,7 +182,6 @@ async function loadGraph() {
     const data  = json.data;
     const dates = Object.keys(data).sort();
 
-    // raw_dataを状態に保存（ない場合は空オブジェクト）
     rawDataMap = json.rawData || {};
 
     if (dates.length === 0) {
@@ -200,10 +210,18 @@ async function loadGraph() {
 }
 
 // ========================================
+// G数に応じた表示色を返す（共通）
+// ========================================
+function getConfidenceColor(totalGames) {
+  if (totalGames >= 3000) return { color: '#ffd600', confidence: 'high' };
+  if (totalGames >= 2000) return { color: '#00e5ff', confidence: 'mid'  };
+  return                         { color: '#6a8aaa', confidence: 'low'  };
+}
+
+// ========================================
 // ブドウ確率逆算（GG3専用）
 // ========================================
 function calcGrapeProb(date, graphPoints) {
-  // raw_dataがない場合は計算不可
   const raw = rawDataMap ? rawDataMap[date] : null;
   if (!raw) return null;
 
@@ -216,10 +234,8 @@ function calcGrapeProb(date, graphPoints) {
   const replayCount    = totalGames / C.REPLAY_PROB;
   const actualInserted = (totalGames - replayCount) * C.BET;
 
-  // グラフの終値（差枚）を使用
-  const lastPt  = graphPoints[graphPoints.length - 1];
-  // graphPointsのdiffは当日相対値（0起点）なのでそのまま使う
-  const diffVal = lastPt.diff;
+  // グラフの終値（差枚・当日相対値）
+  const diffVal = graphPoints[graphPoints.length - 1].diff;
 
   // 総払い出し
   const totalPayout = diffVal + actualInserted;
@@ -234,85 +250,120 @@ function calcGrapeProb(date, graphPoints) {
   const grapePayout = totalPayout - bonusPayout - cherryPayout;
   if (grapePayout <= 0) return null;
 
-  // ブドウ回数・確率
-  const grapeCount = grapePayout / C.GRAPE_PAYOUT;
-  const grapeProb  = totalGames / grapeCount;
-
-  return grapeProb;
+  return totalGames / (grapePayout / C.GRAPE_PAYOUT);
 }
 
 // ========================================
-// ブドウ確率から最近似設定を判定
+// ボーナス合算確率を算出（GG3専用）
 // ========================================
-function estimateSetting(grapeProb) {
-  // 各設定との差が最小のものを選ぶ
+function calcBonusProb(date) {
+  const raw = rawDataMap ? rawDataMap[date] : null;
+  if (!raw) return null;
+
+  const { big, reg, totalGames } = raw;
+  if (!totalGames || totalGames < 1000) return null;
+
+  const bonusCount = big + reg;
+  if (bonusCount === 0) return null;
+
+  return totalGames / bonusCount; // 分母を返す
+}
+
+// ========================================
+// ブドウ確率から最近似設定ラベルを返す
+// ========================================
+function estimateGrapeSetting(grapeProb) {
+  // 最近傍設定を探す
   let nearest = GG3_GRAPE_SETTINGS[0];
   let minDiff = Math.abs(grapeProb - nearest.prob);
-
   for (const s of GG3_GRAPE_SETTINGS) {
     const d = Math.abs(grapeProb - s.prob);
-    if (d < minDiff) {
-      minDiff = d;
-      nearest = s;
-    }
+    if (d < minDiff) { minDiff = d; nearest = s; }
   }
 
-  // 隣の設定との差も見て「付近」か「〜」か判定
-  const idx = GG3_GRAPE_SETTINGS.indexOf(nearest);
+  const idx   = GG3_GRAPE_SETTINGS.indexOf(nearest);
   const prevS = GG3_GRAPE_SETTINGS[idx - 1];
   const nextS = GG3_GRAPE_SETTINGS[idx + 1];
+  const BORDER = 0.025; // 設定間隔が最小0.05のため中間値±0.025で境界判定
 
-  // 上下の設定との中間値を閾値にして境界付近か判定
-  const borderThreshold = 0.08; // この値以内なら「設定X-Y」表示
-  let label = `設定${nearest.setting}付近`;
-
-  if (prevS && Math.abs(grapeProb - (nearest.prob + prevS.prob) / 2) < borderThreshold) {
-    label = `設定${prevS.setting}-${nearest.setting}`;
-  } else if (nextS && Math.abs(grapeProb - (nearest.prob + nextS.prob) / 2) < borderThreshold) {
-    label = `設定${nearest.setting}-${nextS.setting}`;
+  if (prevS && Math.abs(grapeProb - (nearest.prob + prevS.prob) / 2) < BORDER) {
+    return `設定${prevS.setting}-${nearest.setting}`;
   }
-
-  return label;
+  if (nextS && Math.abs(grapeProb - (nearest.prob + nextS.prob) / 2) < BORDER) {
+    return `設定${nearest.setting}-${nextS.setting}`;
+  }
+  return `設定${nearest.setting}付近`;
 }
 
 // ========================================
-// ブドウ表示用オブジェクト生成
+// ボーナス合算確率から最近似設定ラベルを返す
 // ========================================
-function buildGrapeDisplay(date, graphPoints) {
-  // GG3のみ対応
+function estimateBonusSetting(bonusProb) {
+  // 最近傍設定を探す（分母が大きいほど低設定）
+  let nearest = GG3_BONUS_SETTINGS[0];
+  let minDiff = Math.abs(bonusProb - nearest.prob);
+  for (const s of GG3_BONUS_SETTINGS) {
+    const d = Math.abs(bonusProb - s.prob);
+    if (d < minDiff) { minDiff = d; nearest = s; }
+  }
+
+  const idx   = GG3_BONUS_SETTINGS.indexOf(nearest);
+  const prevS = GG3_BONUS_SETTINGS[idx - 1]; // より低設定側
+  const nextS = GG3_BONUS_SETTINGS[idx + 1]; // より高設定側
+  const BORDER = 3.0; // 合算確率の境界判定幅（分母単位）
+
+  if (prevS && Math.abs(bonusProb - (nearest.prob + prevS.prob) / 2) < BORDER) {
+    return `設定${prevS.setting}-${nearest.setting}`;
+  }
+  if (nextS && Math.abs(bonusProb - (nearest.prob + nextS.prob) / 2) < BORDER) {
+    return `設定${nearest.setting}-${nextS.setting}`;
+  }
+  return `設定${nearest.setting}付近`;
+}
+
+// ========================================
+// 表示用オブジェクト生成（GG3・1000G以上のみ）
+// ========================================
+function buildStatsDisplay(date, graphPoints) {
   if (!modelInfo || modelInfo.key !== 'gg3') return null;
 
   const raw = rawDataMap ? rawDataMap[date] : null;
   if (!raw || !raw.totalGames || raw.totalGames < 1000) return null;
 
-  const grapeProb = calcGrapeProb(date, graphPoints);
-  if (grapeProb === null || grapeProb <= 0) return null;
-
   const totalGames = raw.totalGames;
-  const probText   = `1/${grapeProb.toFixed(1)}`;
-  const settingLabel = estimateSetting(grapeProb);
+  const { color } = getConfidenceColor(totalGames);
 
-  // G数に応じて色を変える
-  let color, confidence;
-  if (totalGames >= 3000) {
-    color      = '#ffd600'; // 黄色
-    confidence = 'high';
-  } else if (totalGames >= 2000) {
-    color      = '#00e5ff'; // 水色
-    confidence = 'mid';
-  } else {
-    color      = '#6a8aaa'; // グレー
-    confidence = 'low';
+  // ブドウ逆算
+  const grapeProb = calcGrapeProb(date, graphPoints);
+  let grapeDisplay = null;
+  if (grapeProb !== null && grapeProb > 0) {
+    grapeDisplay = {
+      probText:     `1/${grapeProb.toFixed(1)}`,
+      settingLabel: estimateGrapeSetting(grapeProb),
+      color,
+    };
   }
 
-  return { probText, settingLabel, color, confidence, totalGames };
+  // ボーナス合算
+  const bonusProb = calcBonusProb(date);
+  let bonusDisplay = null;
+  if (bonusProb !== null && bonusProb > 0) {
+    bonusDisplay = {
+      probText:     `1/${bonusProb.toFixed(1)}`,
+      settingLabel: estimateBonusSetting(bonusProb),
+      color,
+    };
+  }
+
+  if (!grapeDisplay && !bonusDisplay) return null;
+  return { grapeDisplay, bonusDisplay };
 }
 
 // ========================================
 // グラフ描画
 // ========================================
 function renderGraph(data, dates, highlightDate) {
-  const wrap = document.getElementById('graphWrap');
+  const wrap  = document.getElementById('graphWrap');
   const color = getModelColor();
 
   // 連結データ生成
@@ -354,12 +405,12 @@ function renderGraph(data, dates, highlightDate) {
   const yPad   = yRange * 0.1;
 
   // ゼロラインが常に範囲内に収まるよう調整
-  const yMin = Math.min(minY - yPad, -yPad);
-  const yMax = Math.max(maxY + yPad,  yPad);
+  const yMin  = Math.min(minY - yPad, -yPad);
+  const yMax  = Math.max(maxY + yPad,  yPad);
   const ySpan = yMax - yMin;
 
-  const toX = g => ML + (g / totalG) * plotW;
-  const toY = v => MT + plotH - ((v - yMin) / ySpan) * plotH;
+  const toX   = g => ML + (g / totalG) * plotW;
+  const toY   = v => MT + plotH - ((v - yMin) / ySpan) * plotH;
   const zeroY = toY(0);
 
   // Yグリッド
@@ -388,10 +439,10 @@ function renderGraph(data, dates, highlightDate) {
 
   // 日境界線・X軸日付ラベル
   const boundaryLines = dayBoundaries.map((b, i) => {
-    const x = toX(b.x).toFixed(1);
+    const x     = toX(b.x).toFixed(1);
     const nextX = i < dayBoundaries.length - 1 ? toX(dayBoundaries[i+1].x) : W - MR;
     const midX  = ((parseFloat(x) + nextX) / 2).toFixed(1);
-    const dayLabel = b.date.split('/')[2];
+    const dayLabel    = b.date.split('/')[2];
     const isHighlight = highlightDate === b.date;
     return `
       ${i > 0 ? `<line x1="${x}" y1="${MT}" x2="${x}" y2="${H-MB}"
@@ -449,9 +500,8 @@ function renderGraph(data, dates, highlightDate) {
   const minPt  = combined.reduce((a,b) => a.y < b.y ? a : b);
   const lastPt = combined[combined.length - 1];
 
-  // 最大値ラベルのY位置（上端クリップ回避）
+  // ラベル位置クリップ回避
   const maxLabelY = Math.max(toY(maxPt.y) - 6, MT + 10);
-  // 最小値ラベルのY位置（下端クリップ回避）
   const minLabelY = Math.min(toY(minPt.y) + 14, H - MB - 2);
 
   wrap.innerHTML = `
@@ -500,9 +550,9 @@ function renderGraph(data, dates, highlightDate) {
 // 日別サマリー描画
 // ========================================
 function renderDaySummary(data, dates) {
-  const summary  = document.getElementById('daySummary');
-  const grid     = document.getElementById('dayGrid');
-  const totalEl  = document.getElementById('monthlyTotal');
+  const summary = document.getElementById('daySummary');
+  const grid    = document.getElementById('dayGrid');
+  const totalEl = document.getElementById('monthlyTotal');
   summary.style.display = 'block';
 
   const color = getModelColor();
@@ -521,26 +571,37 @@ function renderDaySummary(data, dates) {
     const endColor = endVal >= 0 ? '#7fff00' : '#ff2d6b';
     const cumColor = cumulative >= 0 ? '#00aa55' : '#aa2244';
 
-    // ブドウ逆算（GG3のみ・1000G以上）
-    const grape = buildGrapeDisplay(date, points);
+    // ブドウ・合算逆算（GG3のみ・1000G以上）
+    const stats = buildStatsDisplay(date, points);
+
+    // 統計表示HTML
+    let statsHtml = '';
+    if (stats) {
+      if (stats.grapeDisplay) {
+        const g = stats.grapeDisplay;
+        statsHtml += `
+          <div class="day-item-stat" style="color:${g.color}">
+            🍇 ${g.probText}
+            <span class="day-item-stat-label" style="color:${g.color}">${g.settingLabel}</span>
+          </div>
+        `;
+      }
+      if (stats.bonusDisplay) {
+        const b = stats.bonusDisplay;
+        statsHtml += `
+          <div class="day-item-stat" style="color:${b.color}">
+            🎰 ${b.probText}
+            <span class="day-item-stat-label" style="color:${b.color}">${b.settingLabel}</span>
+          </div>
+        `;
+      }
+    }
 
     const item = document.createElement('div');
     item.className = 'day-item';
     item.dataset.date = date;
     item.style.borderLeftColor = color;
     item.style.cursor = 'pointer';
-
-    // ブドウ表示HTML
-    let grapeHtml = '';
-    if (grape) {
-      grapeHtml = `
-        <div class="day-item-grape" style="color:${grape.color}">
-          🍇 ${grape.probText}
-          <span class="day-item-grape-label" style="color:${grape.color}">${grape.settingLabel}</span>
-        </div>
-      `;
-    }
-
     item.innerHTML = `
       <div class="day-item-date" style="color:${color}">${date.slice(5)}</div>
       <div class="day-item-games">${games.toLocaleString()}G</div>
@@ -550,7 +611,7 @@ function renderDaySummary(data, dates) {
       <div class="day-item-cum" style="color:${cumColor}">
         累: ${cumulative >= 0 ? '+' : ''}${Math.round(cumulative)}
       </div>
-      ${grapeHtml}
+      ${statsHtml}
     `;
 
     // タップでハイライト
