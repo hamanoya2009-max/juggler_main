@@ -586,7 +586,7 @@ function renderDaySummary(data, dates) {
         const g = stats.grapeDisplay;
         statsHtml += `
           <div class="day-item-stat" style="color:${g.color}">
-            🍇 ${g.probText}
+            <span class="day-item-stat-icon">🍇</span>${g.probText}
             <span class="day-item-stat-label" style="color:${g.color}">${g.settingLabel}</span>
           </div>
         `;
@@ -595,7 +595,7 @@ function renderDaySummary(data, dates) {
         const b = stats.bonusDisplay;
         statsHtml += `
           <div class="day-item-stat" style="color:${b.color}">
-            🎰 ${b.probText}
+            <span class="day-item-stat-icon">🎰</span>${b.probText}
             <span class="day-item-stat-label" style="color:${b.color}">${b.settingLabel}</span>
           </div>
         `;
