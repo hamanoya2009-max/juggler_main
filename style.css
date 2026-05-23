@@ -121,11 +121,18 @@ body {
 .main {
   position: relative; z-index: 1;
   padding-top: calc(var(--header-h) + 20px);
-  padding-bottom: 0;
+  padding-bottom: 40px;
   max-width: 480px;
   margin: 0 auto;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+/* graph.html専用：グラフ固定レイアウト */
+.main.main-graph {
   padding-left: 0;
   padding-right: 0;
+  padding-bottom: 0;
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--header-h));
