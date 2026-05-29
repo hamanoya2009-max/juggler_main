@@ -21,10 +21,10 @@ let rawDataMap   = null;
 // 機種別定数
 // ========================================
 const MACHINE_CONSTANTS = {
-  gg3: { bigPayout: 240, regPayout: 96, cherryCoef: 0.037363, grapePayout: 8 },
-  my5: { bigPayout: 240, regPayout: 96, cherryCoef: 0.042208, grapePayout: 8 },
-  mr:  { bigPayout: 240, regPayout: 96, cherryCoef: 0.079928, grapePayout: 8 },
-  neo: { bigPayout: 252, regPayout: 96, cherryCoef: 0.040403, grapePayout: 8 },
+  gg3: { bigPayout: 240, regPayout: 96, cherryCoef: 0.037363, grapePayout: 8, replayProb: 7.3 },
+  my5: { bigPayout: 240, regPayout: 96, cherryCoef: 0.042208, grapePayout: 8, replayProb: 7.3 },
+  mr:  { bigPayout: 240, regPayout: 96, cherryCoef: 0.079928, grapePayout: 8, replayProb: 7.3 },
+  neo: { bigPayout: 252, regPayout: 96, cherryCoef: 0.040403, grapePayout: 8, replayProb: 7.3 },
 };
 
 // ブドウ確率の設定別閾値
@@ -63,7 +63,7 @@ const GRAPE_SETTINGS = {
   ],
 };
 
-// ボーナス合算確率の設定別閾値
+// ボーナス合算確率の設定別閾値（GG3のみ）
 const GG3_BONUS_SETTINGS = [
   { setting: '1', prob: 149.6 },
   { setting: '2', prob: 145.3 },
@@ -258,13 +258,24 @@ function calcGrapeProb(date, graphPoints) {
   const { big, reg, totalGames } = raw;
   if (!totalGames || totalGames < 1000) return null;
 
+  // 元のロジックを維持：リプレイ分を除いた実質投入枚数
+  const replayCount    = totalGames / C.replayProb;
+  const actualInserted = (totalGames - replayCount) * 3;
+
+  // 差枚（当日相対値）
   const diffVal = graphPoints[graphPoints.length - 1].diff;
 
-  const totalPayout = totalGames * 3 + diffVal;
-  const bonusPayout = big * C.bigPayout + reg * C.regPayout;
-  const cherryPayout = totalGames * C.cherryCoef;
-  const grapePayout = totalPayout - bonusPayout - cherryPayout;
+  // 総払出
+  const totalPayout = diffVal + actualInserted;
 
+  // ボーナス払出
+  const bonusPayout  = big * C.bigPayout + reg * C.regPayout;
+
+  // チェリー払出（ガリゾウ準拠の係数）
+  const cherryPayout = totalGames * C.cherryCoef;
+
+  // ブドウ払出
+  const grapePayout = totalPayout - bonusPayout - cherryPayout;
   if (grapePayout <= 0) return null;
 
   return totalGames / (grapePayout / C.grapePayout);
@@ -636,8 +647,6 @@ function renderGraph(data, dates, highlightDate) {
         ${boundaryLines}
         ${dayPaths}
         ${endPoints}
-
-        <!-- 最大値 -->
         <circle cx="${toX(maxPt.x).toFixed(1)}" cy="${toY(maxPt.y).toFixed(1)}"
           r="3" fill="#ffd600"
           opacity="${highlightDate && highlightDate !== maxPt.date ? 0.3 : 1}"/>
@@ -646,8 +655,6 @@ function renderGraph(data, dates, highlightDate) {
           opacity="${highlightDate && highlightDate !== maxPt.date ? 0.3 : 1}">
           +${Math.round(maxPt.y)}
         </text>
-
-        <!-- 最小値 -->
         <circle cx="${toX(minPt.x).toFixed(1)}" cy="${toY(minPt.y).toFixed(1)}"
           r="3" fill="#ff2d6b"
           opacity="${highlightDate && highlightDate !== minPt.date ? 0.3 : 1}"/>
@@ -656,12 +663,8 @@ function renderGraph(data, dates, highlightDate) {
           opacity="${highlightDate && highlightDate !== minPt.date ? 0.3 : 1}">
           ${Math.round(minPt.y)}
         </text>
-
-        <!-- 現在値 -->
         <circle cx="${toX(lastPt.x).toFixed(1)}" cy="${toY(lastPt.y).toFixed(1)}"
           r="3.5" fill="${color}" stroke="#000" stroke-width="0.5"/>
-
-        <!-- 枠線 -->
         <rect x="${ML}" y="${MT}" width="${plotW}" height="${plotH}"
           fill="none" stroke="#1c1c2e" stroke-width="0.5"/>
       </svg>
